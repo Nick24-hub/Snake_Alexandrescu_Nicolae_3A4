@@ -23,7 +23,7 @@ def draw_map(surface):
             if (i + j) % 2:
                 square1 = pygame.Rect((border_width + i * square_size, border_width + j * square_size),
                                       (square_size, square_size))
-                pygame.draw.rect(surface, (128, 128, 128), square1)
+                pygame.draw.rect(surface, (224, 224, 224), square1)
             else:
                 square2 = pygame.Rect((border_width + i * square_size, border_width + j * square_size),
                                       (square_size, square_size))
@@ -35,9 +35,16 @@ def get_random_coordinates():
             random.randint(0, squares_per_height - 1) * square_size)
 
 
+def randomise_position(obstacles):
+    pos = get_random_coordinates()
+    while pos in obstacles:
+        pos = get_random_coordinates()
+    return pos
+
+
 class Target(object):
-    def __init__(self):
-        self.position = get_random_coordinates()
+    def __init__(self, obstacles):
+        self.position = randomise_position(obstacles)
         self.color = (255, 255, 0)
 
     def draw(self, surface):
@@ -86,13 +93,13 @@ class Snake(object):
     def get_head_coordinates(self):
         return self.coordinates[0]
 
-    def move(self):
+    def move(self, obstacles):
         head_position = self.get_head_coordinates()
         next_position = (
             head_position[0] + self.direction[0] * square_size, head_position[1] + self.direction[1] * square_size)
 
-        if len(self.coordinates) > 2 and next_position in self.coordinates[2:] or next_position[0] < 0 or \
-                next_position[0] >= width - 2 * border_width or next_position[1] < 0 or \
+        if len(self.coordinates) > 2 and next_position in self.coordinates[2:] or next_position in obstacles or \
+                next_position[0] < 0 or next_position[0] >= width - 2 * border_width or next_position[1] < 0 or \
                 next_position[1] >= height - 2 * border_width:
             return -1
         else:
@@ -102,13 +109,27 @@ class Snake(object):
         return 1
 
 
+class Obstacles(object):
+    def __init__(self):
+        self.positions = [get_random_coordinates() for _ in range(12)]
+        self.color = (255, 0, 0)
+
+    def draw(self, surface):
+        for position in self.positions:
+            square = pygame.Rect((border_width + position[0], border_width + position[1]),
+                                 (square_size, square_size))
+            pygame.draw.rect(surface, self.color, square)
+            pygame.draw.rect(surface, (255, 128, 0), square, 3)
+
+
 def start_game(high_score):
     pygame.init()
     clock = pygame.time.Clock()
     window = pygame.display.set_mode((width, height))
     surface = pygame.Surface(window.get_size())
-    target = Target()
+    obstacles = Obstacles()
     snake = Snake()
+    target = Target(obstacles.positions + snake.coordinates)
     score = 0
     font = pygame.font.Font("Roboto-Medium.ttf", 20)
 
@@ -118,21 +139,22 @@ def start_game(high_score):
         if exit_flag == -1:
             break
         draw_map(surface)
-        lost_flag = snake.move()
+        obstacles.draw(surface)
+        lost_flag = snake.move(obstacles.positions)
         if lost_flag == -1:
             break
         if snake.get_head_coordinates() == target.position:
             snake.length += 1
             score += 1
-            target.position = get_random_coordinates()
+            target.position = randomise_position(obstacles.positions + snake.coordinates)
         snake.draw(surface)
         target.draw(surface)
         window.blit(surface, (0, 0))
-        score_text = font.render("Score: {0}".format(score), True, (255, 0, 0))
+        score_text = font.render("Score: {0}".format(score), True, (0, 0, 0))
         window.blit(score_text, (10, 10))
-        high_score_text = font.render("High score: {0}".format(high_score), True, (255, 0, 0))
+        high_score_text = font.render("High score: {0}".format(high_score), True, (0, 0, 0))
         window.blit(high_score_text, (600, 10))
-        exit_text = font.render("Press 'ESC' to exit", True, (255, 0, 0))
+        exit_text = font.render("Press 'ESC' to exit", True, (0, 0, 0))
         window.blit(exit_text, (250, 10))
         pygame.display.update()
 
